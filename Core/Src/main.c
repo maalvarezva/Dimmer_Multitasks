@@ -64,7 +64,7 @@ const osThreadAttr_t Led2_Fsm_Task_attributes = {
 /* USER CODE BEGIN PV */
 led_t led2;
 fsm_t fsm_button;
-fsm_t fsm_Dimmer;
+fsm_d fsm_dimmer;
 
 
 /* USER CODE END PV */
@@ -104,6 +104,7 @@ int main(void)
   /* USER CODE BEGIN 1 */
   init_led_struct(&led2);
   init_fsm(&fsm_button);
+  init_fsmd (&fsm_dimmer);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -128,8 +129,8 @@ int main(void)
   MX_TIM3_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
- HAL_TIM_Base_Start_IT(&htim2);
- //HAL_TIM_Base_Start_IT(&htim3);
+ //HAL_TIM_Base_Start_IT(&htim2);
+ HAL_TIM_Base_Start_IT(&htim3);
  HAL_UART_Transmit(&huart2, (uint8_t *)"Initializing fsm...\n", sizeof("Initializing fsm...\n")-1, 100);
  print_current_state(&fsm_button);
   /* USER CODE END 2 */
@@ -146,7 +147,7 @@ int main(void)
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  //HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
@@ -170,6 +171,7 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  //uint8_t duty;
   while (1)
   {
     /* USER CODE END WHILE */
@@ -249,6 +251,7 @@ static void MX_TIM2_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM2_Init 1 */
 
@@ -256,7 +259,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 16;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1000;
+  htim2.Init.Period = 100;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -268,15 +271,28 @@ static void MX_TIM2_Init(void)
   {
     Error_Handler();
   }
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
 
 }
 
@@ -294,15 +310,14 @@ static void MX_TIM3_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM3_Init 1 */
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 160;
+  htim3.Init.Prescaler = 16;
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim3.Init.Period = 99;
+  htim3.Init.Period = 1000;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
@@ -314,28 +329,15 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN TIM3_Init 2 */
 
   /* USER CODE END TIM3_Init 2 */
-  HAL_TIM_MspPostInit(&htim3);
 
 }
 
@@ -389,21 +391,11 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-
   /*Configure GPIO pin : B1_Pin */
   GPIO_InitStruct.Pin = B1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
@@ -418,7 +410,7 @@ void init_led_struct ( led_t *led ) {
 	led->start = 0;
 }
 
-void init_fsm ( fsm_t *sm ) {
+void init_fsm ( fsm_t *sm ) {  //init states machine debounce
 	sm->state = WAITING;
 	sm->event = NON_EVENT;
 	sm->new_event = FALSE;
@@ -426,7 +418,14 @@ void init_fsm ( fsm_t *sm ) {
 	sm->start_countdown = 0;
 }
 
-void run_fsm ( fsm_t *sm ) {
+void init_fsmd ( fsm_d *fsm ) { //init states machine Dimmer
+	fsm->state = OFF;
+	fsm->event = Non_EVENT;
+	fsm->new_event = FALSE;
+	fsm-> count_Dimm=0;
+}
+
+void run_fsm ( fsm_t *sm ) {    //machine states debounce
 	if (sm->new_event == TRUE) {
 		sm->new_event = FALSE;
 		switch (sm->state) {
@@ -467,9 +466,12 @@ void run_fsm ( fsm_t *sm ) {
 				sm->event = NON_EVENT;
 				sm->new_event = FALSE;
 				print_current_state(sm);
-				HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-				//flagDimmer=TRUE;
-				//flagTransition=TRUE;
+				//HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+				//__HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_1, 15);
+				fsm_dimmer.new_event = TRUE;
+				fsm_dimmer.event=PUSH_BOTTON;
+				fsm_dimmer.count_Dimm++;
+
 			}
 			break;
 		default:
@@ -481,6 +483,52 @@ void run_fsm ( fsm_t *sm ) {
 	}
 }
 
+void run_dimmer_fsm(fsm_d *fsm){  //machine states Dimmer
+	if(fsm->new_event==TRUE){
+		fsm->new_event=FALSE;
+
+	switch(fsm->state){
+	case OFF:
+
+		if(fsm->event==PUSH_BOTTON &&fsm->count_Dimm==1 ){
+			__HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_1, 10); //Dimer apagado
+			//fsm->state=DIM;
+		}
+		//else{
+			//fsm->state=OFF;
+		//}
+		break;
+	case DIM:
+		if(fsm->event==PUSH_BOTTON &&fsm->count_Dimm==2 ){
+			__HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_1, 50);               //Dimer medio
+			//fsm->state=ON;
+		//}
+		//if(fsm->count_Dimm==4){
+			//fsm->state=OFF;
+		//}
+		//else{
+			//fsm->state=DIM;
+		}
+		break;
+
+	case ON:
+		if(fsm->event==PUSH_BOTTON &&fsm->count_Dimm==3 ){
+			__HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_1, 100);                   //Dimer encendio
+			//fsm->state=DIM;
+		}
+		if(fsm->event==PUSH_BOTTON &&fsm->count_Dimm==4 ){
+					//__HAL_TIM_SetCompare(&htim2, TIM_CHANNEL_1, 100);
+		}
+		break;
+
+	default:
+			fsm->state=OFF;
+		break;
+
+		}
+
+	}
+}
 
 
 
@@ -543,7 +591,7 @@ void StartLed2_Fsm_Tak(void *argument)
   /* Infinite loop */
   for(;;)
   {
-	 //run_fsmled(&fsm_Dimmer);
+	run_dimmer_fsm(&fsm_dimmer);
     osDelay(1);
   }
   /* USER CODE END StartLed2_Fsm_Tak */
@@ -567,8 +615,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE BEGIN Callback 1 */
 
-  if (htim->Instance == TIM2) {
-	 // HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+  if (htim->Instance == TIM3) {
+
 
 	  if (fsm_button.start_countdown == TRUE) {
 			fsm_button.counter++;

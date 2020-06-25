@@ -42,19 +42,8 @@ typedef enum _states_ {
 	DETECTED,
 	WAIT_RELEASE,
 	UPDATE,
-	OFF,
-	DIM,
-	ON,
 	TOTAL_STATES
 }states_t;
-/*
-typedef enum _statesDimmer_ {
-	OFF,
-	DIM,
-	ON,
-}states_tDimmer;
-
-*/
 
 typedef enum _events_ {
 	NON_EVENT,
@@ -76,8 +65,7 @@ typedef struct _fsm_ {
 	uint8_t counter; /* each 10mSeg */
 	bool_t new_event:1;
 	bool_t start_countdown:1;
-	bool_t flagDimmer:1;
-	bool_t flagTransition:1;
+
 }fsm_t;
 
 typedef struct _led_ {
@@ -85,6 +73,27 @@ typedef struct _led_ {
 	volatile uint16_t counter; /* into the timer */
 	uint8_t start;
 }led_t;
+
+typedef enum _states_d{
+	ON,
+	DIM,
+	OFF,
+}states_Dimm;
+
+typedef enum _events_d{
+	Non_EVENT,
+	PUSH_BOTTON,
+	TOTAL_Events,
+}events_Dimm;
+
+typedef struct _fsm_d{
+	states_Dimm state;
+	events_Dimm event;
+	uint8_t count_Dimm;
+	bool_t new_event:1;
+}fsm_d;
+
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -106,8 +115,10 @@ void Error_Handler(void);
 GPIO_PinState button_pressed ( GPIO_TypeDef *port, uint16_t pin );
 void init_led_struct ( led_t *led );
 void init_fsm ( fsm_t *sm );
+void init_fsmd ( fsm_d *fsm) ;
 void print_current_state ( fsm_t *fsm );
 void run_fsm ( fsm_t *sm );
+void run_dimmer_fsm(fsm_d *fsm);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -118,8 +129,6 @@ void run_fsm ( fsm_t *sm );
 #define USART_TX_GPIO_Port GPIOA
 #define USART_RX_Pin GPIO_PIN_3
 #define USART_RX_GPIO_Port GPIOA
-#define LD2_Pin GPIO_PIN_5
-#define LD2_GPIO_Port GPIOA
 #define TMS_Pin GPIO_PIN_13
 #define TMS_GPIO_Port GPIOA
 #define TCK_Pin GPIO_PIN_14
